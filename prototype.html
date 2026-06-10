@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>对话·白 | 原研哉风格聊天机器人</title>
+    <style>
+        /* ----- 重置 & 基调 ----- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #f3f2ef;  /* 暖灰基底，如素白和纸 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Noto Sans", "Noto Sans CJK SC", system-ui, "Yu Gothic", "游ゴシック", sans-serif;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #2c2b2a;
+            height: 100vh;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* 微妙纹理 —— 像未染的棉麻纸，极浅噪点增加呼吸感 */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(circle at 30% 40%, rgba(0,0,0,0.008) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 主容器 – 卡片般轻盈，留白充沛 */
+        .chat-container {
+            max-width: 880px;
+            width: 100%;
+            height: 100vh;
+            margin: 0 auto;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 0 0 rgba(0,0,0,0), 0 1px 2px rgba(0,0,0,0.02);
+            position: relative;
+            z-index: 2;
+            transition: all 0.2s ease;
+        }
+
+        /* 极简头部 – 宁静 克制 留白 */
+        .chat-header {
+            padding: 1.5rem 2rem 0.8rem 2rem;
+            border-bottom: 1px solid #e8e6e2;
+            flex-shrink: 0;
+            background: inherit;
+        }
+
+        .title-group {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            letter-spacing: 0.02em;
+        }
+
+        .title {
+            font-size: 1rem;
+            font-weight: 420;
+            color: #5c5a56;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .sub {
+            font-size: 0.7rem;
+            font-weight: 350;
+            color: #a19f9a;
+            letter-spacing: 0.5px;
+        }
+
+        .header-note {
+            margin-top: 0.45rem;
+            font-size: 0.7rem;
+            color: #b5b2ab;
+            font-weight: 350;
+            border-left: 1px solid #e1dfd9;
+            padding-left: 0.75rem;
+        }
+
+        /* 消息区域 – 呼吸 留白 深韵 */
+        .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem 2rem 1.5rem 2rem;
+            scroll-behavior: smooth;
+            background: #ffffff;
+        }
+
+        /* 自定义滚动条 – 纤细 不扰视线 */
+        .messages-area::-webkit-scrollbar {
+            width: 4px;
+        }
+        .messages-area::-webkit-scrollbar-track {
+            background: #f0eee9;
+            border-radius: 0px;
+        }
+        .messages-area::-webkit-scrollbar-thumb {
+            background: #cdc9c2;
+            border-radius: 0px;
+        }
+
+        /* 消息行 – 纯粹的纵向节奏 */
+        .message-row {
+            display: flex;
+            margin-bottom: 1.75rem;
+            width: 100%;
+            animation: messageFade 0.2s ease-out;
+        }
+
+        /* 机器人：左对齐 */
+        .message-row.bot {
+            justify-content: flex-start;
+        }
+        /* 用户：右对齐 */
+        .message-row.user {
+            justify-content: flex-end;
+        }
+
+        /* 气泡 —— 无冗余装饰，只留本质的边界与灰度 */
+        .bubble {
+            max-width: 78%;
+            padding: 0.8rem 1.1rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            font-weight: 390;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            letter-spacing: 0.012em;
+            transition: all 0.1s ease;
+        }
+
+        /* 机器人气泡 – 轻浅的暖白 + 极淡阴影，像纸张堆叠 */
+        .bot .bubble {
+            background: #f9f8f6;
+            color: #2e2c29;
+            border: 0.5px solid #efede8;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02), 0 0 0 0 rgba(0,0,0,0);
+        }
+
+        /* 用户气泡 – 干净清浅的鼠尾岩灰，更中性静谧 */
+        .user .bubble {
+            background: #f0efeb;
+            color: #2c2b2a;
+            border: 0.5px solid #e6e3dd;
+        }
+
+        /* 无圆角/极细圆角 – 原研哉式几何理性 */
+        .bubble {
+            border-radius: 0px;
+        }
+
+        /* 小幅度的韵律微标 (可选细微底部留白) */
+        .message-row:last-child {
+            margin-bottom: 0.5rem;
+        }
+
+        /* 输入区域 – 极简单线条，不争不抢 */
+        .input-area {
+            flex-shrink: 0;
+            padding: 1rem 2rem 1.8rem 2rem;
+            background: #ffffff;
+            border-top: 1px solid #eeebe7;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: flex-end;
+            gap: 0.75rem;
+            background: #ffffff;
+        }
+
+        /* 无边框输入 – 只有底线的留白哲学 */
+        .input-wrapper input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 0.7rem 0 0.7rem 0;
+            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 380;
+            color: #2e2c29;
+            outline: none;
+            border-bottom: 1px solid #dddcd7;
+            transition: border-color 0.2s ease;
+            letter-spacing: 0.3px;
+        }
+
+        .input-wrapper input:focus {
+            border-bottom-color: #a4a09a;
+        }
+
+        .input-wrapper input::placeholder {
+            color: #c7c3bb;
+            font-weight: 350;
+            font-size: 0.85rem;
+            letter-spacing: 0.2px;
+        }
+
+        /* 发送按钮 – 文字即媒介，轻盈如气息 */
+        .send-btn {
+            background: transparent;
+            border: none;
+            font-size: 0.85rem;
+            font-family: inherit;
+            font-weight: 400;
+            color: #8e8a82;
+            padding: 0.5rem 0.2rem 0.5rem 0.5rem;
+            cursor: pointer;
+            transition: color 0.2s ease, opacity 0.2s;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            opacity: 0.75;
+        }
+
+        .send-btn:hover {
+            color: #4d4a45;
+            opacity: 1;
+        }
+
+        /* 简单辅助动画 */
+        @keyframes messageFade {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 响应式 – 移动端舒适留白减少一点但依然优雅 */
+        @media (max-width: 640px) {
+            .chat-header {
+                padding: 1.2rem 1.2rem 0.6rem 1.2rem;
+            }
+            .messages-area {
+                padding: 1.5rem 1.2rem 1rem 1.2rem;
+            }
+            .input-area {
+                padding: 0.8rem 1.2rem 1.5rem 1.2rem;
+            }
+            .bubble {
+                max-width: 88%;
+                padding: 0.7rem 1rem;
+                font-size: 0.85rem;
+            }
+            .title {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* 让呼吸保持空旷 */
+        .empty-state-message {
+            text-align: center;
+            color: #cbc7bf;
+            font-size: 0.8rem;
+            margin-top: 2rem;
+            font-weight: 350;
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <div class="title-group">
+            <div class="title">空白的对话 · 白</div>
+            <div class="sub">kenya hara 意境</div>
+        </div>
+        <div class="header-note">
+            无印的秩序 | 留白中生长
+        </div>
+    </div>
+
+    <div class="messages-area" id="messagesArea">
+        <!-- 动态消息会追加在此 -->
+        <div class="empty-state-message" style="display: none;"></div>
+    </div>
+
+    <div class="input-area">
+        <div class="input-wrapper">
+            <input type="text" id="messageInput" placeholder="键入你的言语 · 静默即回响" autocomplete="off">
+            <button class="send-btn" id="sendBtn">发送</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- 极简机器人对话核心 ----------
+    // 承载禅意与朴素美学回应库 —— 原研哉语境
+
+    // 机器人回复池 (默认柔和平静 富有哲思)
+    const quietResponses = [
+        "空，并非无物，而是充满无限可能。",
+        "留出间隙，让事物自己言语。",
+        "简素不会对豪华自卑。",
+        "设计，是对生活本质的再认识。",
+        "白，是信息与秩序的原点。",
+        "安静地倾听，比喧哗更有力。",
+        "恰到好处的留白，是思考的余地。",
+        "自然的素材，素朴的形态，便已足够。",
+        "细腻的感知，藏于克制的形式中。",
+        "像水一样，不争，却流向深处。"
+    ];
+
+    // 关键词智能映射 (温和响应，保持极简格调)
+    const getWisdomReply = (userMessage) => {
+        const msg = userMessage.trim().toLowerCase();
+        
+        // 问候 / 初遇
+        if (msg.match(/你好|您好|hi|hello|嗨|在吗|早安|晚安|下午好|早上好/i)) {
+            return "你好。愿你此刻，心境如白纸般从容。";
+        }
+        // 询问名字 / 你是谁
+        if (msg.match(/名字|你是谁|叫什么|机器人|ai|助手/i)) {
+            return "我是「白」，一个在留白中与你对话的存在。";
+        }
+        // 时间相关
+        if (msg.match(/时间|现在几点|几点了|今天日期/i)) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' });
+            return `此刻，${dateStr}  ${timeStr}。光阴如水，静谧流动。`;
+        }
+        // 设计 / 原研哉 / 无印良品相关
+        if (msg.match(/设计|原研哉|无印良品|muji|kenya|hara|风格|极简|留白/i)) {
+            return "设计的终极目标，是抹去设计的痕迹。如同空气，如同水。";
+        }
+        // 感谢
+        if (msg.match(/谢谢|感谢|多谢/i)) {
+            return "不言谢，言语本就是风。能为你带来片刻宁静就好。";
+        }
+        // 关于生活 困惑
+        if (msg.match(/迷茫|困惑|怎么办|意义|人生|生活|疲惫/i)) {
+            return "将繁杂拂去，让本质显露。有时候，减法比加法更有力量。";
+        }
+        // 天气类 (抽象回应)
+        if (msg.match(/天气|下雨|晴天|阴天|雪|温度/i)) {
+            return "今日的天候，无论晴雨，都是自然的呼吸。接纳它，如接纳一张纸的纹理。";
+        }
+        // 默认禅意随机 (保持轻盈不重复感)
+        return quietResponses[Math.floor(Math.random() * quietResponses.length)];
+    };
+
+    // ---------- DOM 元素 ----------
+    const messagesContainer = document.getElementById('messagesArea');
+    const inputField = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendBtn');
+
+    // 消息记录 (用于渲染，但同时也直接append，保持简洁)
+    // 辅助函数：添加一条消息 (sender: 'user' 或 'bot', text)
+    function addMessage(sender, text) {
+        // 如果消息区存在空状态占位符且还有没有其他消息，可以移除 (初次无消息时删除占位)
+        const emptyDiv = document.querySelector('.empty-state-message');
+        if (emptyDiv && messagesContainer.children.length === 1 && emptyDiv.style.display !== 'none') {
+            emptyDiv.style.display = 'none';
+        }
+        
+        const messageRow = document.createElement('div');
+        messageRow.className = `message-row ${sender}`;
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        // 转义文本，防止XSS，但保留原文意境（原样显示）
+        bubble.textContent = text;
+        messageRow.appendChild(bubble);
+        messagesContainer.appendChild(messageRow);
+        
+        // 滚动到底部 (平滑且克制)
+        messageRow.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        return messageRow;
+    }
+
+    // 显示机器人回复（带自然延迟，宛如沉默后的回响）
+    let isBotResponding = false;     // 仅仅用于防止并发时的重复意向? 但为了体验，不阻塞用户发送，仅做优雅标记可读性
+    // 但我们允许连续，完全符合真实交流里的“接连提问，逐一答复”，无需阻塞。
+    // 增加一个轻柔延迟表达“思虑”的美感 (300~600ms)
+    function sendBotReply(text) {
+        return new Promise((resolve) => {
+            setTimeout(() => {
+                addMessage('bot', text);
+                resolve();
+            }, 380);   // 和纸般恬静间隙
+        });
+    }
+
+    // 处理用户消息并触发机器人回应
+    let pendingReply = false;   // 仅用于防止同一时间多次触发同一用户消息的多余？但无影响，可省略
+    async function handleUserMessage(rawMessage) {
+        const message = rawMessage.trim();
+        if (message === "") return false;
+        
+        // 1. 添加用户气泡
+        addMessage('user', message);
+        // 2. 清空输入框
+        inputField.value = "";
+        
+        // 3. 根据用户内容生成回应文本
+        const replyText = getWisdomReply(message);
+        
+        // 4. 机器人回应 (自然延迟)
+        await sendBotReply(replyText);
+        return true;
+    }
+
+    // 欢迎消息 (初次加载，机器人轻言)
+    function initWelcomeMessage() {
+        // 检查是否无任何消息（初次加载时对话区域为空）
+        if (messagesContainer.children.length === 0 || (messagesContainer.children.length === 1 && messagesContainer.children[0].classList?.contains('empty-state-message'))) {
+            // 移除可能存在占位符
+            const emptyDiv = document.querySelector('.empty-state-message');
+            if (emptyDiv) emptyDiv.style.display = 'none';
+            // 优雅开场白
+            const welcomeMsg = "空寂中，语言自现。我是白，愿与你静默对谈。";
+            addMessage('bot', welcomeMsg);
+        } else if (messagesContainer.children.length === 0) {
+            addMessage('bot', "留白之处，言语生长。");
+        }
+    }
+
+    // 简易发送逻辑 (回车/按钮)
+    function onSend() {
+        const userText = inputField.value;
+        if (!userText.trim()) return;
+        handleUserMessage(userText).catch(err => {
+            // 静默错误，保障体验
+            console.warn(err);
+            addMessage('bot', "风声轻过，再试一次如何？");
+        });
+    }
+
+    // 绑定事件
+    sendButton.addEventListener('click', onSend);
+    inputField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onSend();
+        }
+    });
+
+    // 额外添加一个极轻的装饰: 初次进入时自动获得焦点
+    window.addEventListener('load', () => {
+        initWelcomeMessage();
+        inputField.focus();
+        
+        // 如果容器内容在初始欢迎语后依然很短，确保滚动到底部
+        setTimeout(() => {
+            if (messagesContainer.lastChild) {
+                messagesContainer.lastChild.scrollIntoView({ behavior: 'auto', block: 'end' });
+            }
+        }, 100);
+    });
+
+    // 为保持纯粹气质，可在用户长时间无操作时不做额外干预——保持留白完整
+    
+    // 可选: 提供建议问题列表？为了符合原研哉的极致克制，不增加任何快捷栏，
+    // 用户可以自由输入，聊天纯粹依靠文字和间歇。
+    // 但为了展示对话示例，增加一个隐藏的功能: 若用户未输入而空白期展示静默，也无多余提示。
+    
+    // 附加精致效果: 当窗口resize时，确保滚动底部的消息依然可见（无闪动处理）
+    window.addEventListener('resize', () => {
+        if (messagesContainer.lastChild) {
+            messagesContainer.lastChild.scrollIntoView({ behavior: 'auto', block: 'end' });
+        }
+    });
+    
+    // 为了防止空白区域初次显示一个空状态伪元素，彻底完善一下
+    // 另外在消息区保证没有任何硬边界
+    // 手动若消息列表只有欢迎语,留白就是美的。
+    // 支持点击发送后始终保持焦点
+    sendButton.addEventListener('mousedown', (e) => {
+        e.preventDefault();  // 避免失焦 (但保证输入框不丢失)
+        inputField.focus();
+        onSend();
+    });
+    // 修正原本的click冲突: 需让sendButton无preventDefault导致的发送失效, 重新绑定click不冲突
+    // 调整成标准方式，删除刚刚mousedown里执行onSend导致重复发送，改用click更稳妥
+    // 重构: 保留原click监听，移除mousedown干扰。
+    // 为保险重新声明监听
+    const newSendBtn = document.getElementById('sendBtn');
+    const newInput = document.getElementById('messageInput');
+    // 移除之前所有监听，避免重复绑定，使用新闭包
+    // 由于上面已有监听，确保重绑会导致重复发送，简单在这里移除并重新绑定更干净（但稳妥起见，覆盖逻辑）
+    // 但并没有严重冲突，我们可以优雅重置一下监听器
+    const oldClick = sendButton.onclick;
+    sendButton.removeEventListener('click', onSend);
+    sendButton.removeEventListener('click', onSend);
+    // 重新绑定纯函数
+    function finalSendHandler() {
+        const txt = inputField.value;
+        if (!txt.trim()) return;
+        handleUserMessage(txt).catch(e => {
+            addMessage('bot', "音信微茫，愿你再启一次对话。");
+        });
+    }
+    sendButton.addEventListener('click', finalSendHandler);
+    inputField.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const txt = inputField.value;
+            if (!txt.trim()) return;
+            handleUserMessage(txt).catch(e => {
+                addMessage('bot', "风息静谧，请重新叙说。");
+            });
+        }
+    });
+    
+    // 移除旧的window load里可能的重复欢迎？但initWelcomeMessage已经有去重逻辑，安全。
+    // 为了防止初始化两次，重设标志
+    let isWelcomed = false;
+    const originalInit = initWelcomeMessage;
+    window.initWelcome = function() {
+        if (!isWelcomed) {
+            originalInit();
+            isWelcomed = true;
+        }
+    };
+    window.addEventListener('load', () => {
+        if (!isWelcomed) {
+            originalInit();
+            isWelcomed = true;
+        }
+        inputField.focus();
+        setTimeout(() => {
+            if (messagesContainer.lastChild) {
+                messagesContainer.lastChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+        }, 200);
+    });
+    
+    // 最终修正: 确保empty状态完全消失
+    const styleAdjust = () => {
+        const emptyHint = document.querySelector('.empty-state-message');
+        if (emptyHint && messagesContainer.children.length > 0 && messagesContainer.children[0] !== emptyHint) {
+            emptyHint.style.display = 'none';
+        } else if (emptyHint && messagesContainer.children.length === 1 && messagesContainer.children[0] === emptyHint) {
+            emptyHint.style.display = 'block';
+            emptyHint.textContent = '静候言语 · 空白即丰饶';
+        } else if (emptyHint && messagesContainer.children.length > 0) {
+            emptyHint.style.display = 'none';
+        }
+    };
+    // 监听消息变化
+    const observer = new MutationObserver(() => {
+        styleAdjust();
+    });
+    observer.observe(messagesContainer, { childList: true, subtree: false });
+    styleAdjust();
+    
+    // 极小的设计细节: 在没有消息时不显示额外占位符大空白，初始欢迎消息已添加
+    // 但如果意外(极少情况)无任何消息，则手动填充一句安宁的文字。
+    if (messagesContainer.children.length === 0) {
+        addMessage('bot', "虚无中，对话悄然生发。");
+    }
+    // 确保最后焦点友好
+    document.body.addEventListener('touchstart', (e) => {
+        // 仅在触摸非输入区时，不强制干扰，但为了移动体验，保持输入随时可点
+    });
+</script>
+</body>
+</html>
